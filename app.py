@@ -23,62 +23,74 @@ def filter_dates(df, period):
     return df[df['date'] >= past_date]
 
 def app():
-    st.title('Data visualization app')
+    st.title('Weightplot')
+
+    # デフォルトのCSVファイルを読み込みます。
+    data = pd.read_csv('./data/wlog.csv')
+    data['date'] = pd.to_datetime(data['date'], format='%Y/%m/%d')
+    data = data.sort_values(by='date')
+
     file = st.file_uploader('Upload your csv file', type=['csv'])
 
+    # ユーザーが新たなファイルをアップロードした場合、アップロードされたファイルでデフォルトのファイルを上書きします。
     if file is not None:
         data = pd.read_csv(file)
         data['date'] = pd.to_datetime(data['date'], format='%Y/%m/%d')
         data = data.sort_values(by='date')
-        period = st.selectbox(
-            'Select period',
-            ['1 week', '1 month', '3 months', '6 months', '1 year', '3 years', 'All time']
-        )
-        filtered_data = filter_dates(data, period)
         
-        # Create a line chart
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=filtered_data['date'], y=filtered_data['kg'], 
-                                 mode='lines+markers', 
-                                 name='lines+markers',
-                                 line=dict(color='limegreen'),
-                                 marker=dict(color='limegreen'),
-                                 fill='tozeroy',
-                                 fillcolor='rgba(50, 205, 50, 0.5)'))  # Limegreen with 50% transparency
+    period = st.selectbox(
+        'Select period',
+        ['1 week', '1 month', '3 months', '6 months', '1 year', '3 years', 'All time'],
+        index=2  # 3 monthsをデフォルトとして設定
+    )
+    filtered_data = filter_dates(data, period)
+
         
-        # Add 7-day moving average line if selected
-        show_moving_average = st.checkbox('Show 7-day moving average')
-        if show_moving_average:
-            data['7_day_avg'] = data['kg'].rolling(window=7).mean()
-            filtered_average_data = filter_dates(data, period)
-            fig.add_trace(go.Scatter(x=filtered_average_data['date'], y=filtered_average_data['7_day_avg'], 
-                                     mode='lines', 
-                                     name='7-day moving average',
-                                     line=dict(color='red')))
-        
-        # Set y-axis range
-        ymin, ymax = st.slider('Set y-axis range', min_value=0, max_value=100, value=(60,80))
-        fig.update_yaxes(range=[ymin, ymax])
-        
-        # Update layout
-        fig.update_layout(
-            font=dict(
-                family="Courier New, monospace",
-                size=18,
-                color="black"
-            ),
-            plot_bgcolor='white',
-            xaxis_showgrid=True, 
-            yaxis_showgrid=True, 
-            xaxis_ticks="inside", 
-            yaxis_ticks="inside",
-            xaxis_linecolor='black',
-            yaxis_linecolor='black',
-            xaxis_title="Date",
-            yaxis_title="Weight (kg)"
-        )
-        
-        st.plotly_chart(fig)
+    # Create a line chart
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=filtered_data['date'], y=filtered_data['kg'], 
+                                mode='lines+markers', 
+                                name='lines+markers',
+                                line=dict(color='limegreen'),
+                                marker=dict(color='limegreen'),
+                                fill='tozeroy',
+                                fillcolor='rgba(50, 205, 50, 0.5)'))  # Limegreen with 50% transparency
+    
+    # Add 7-day moving average line if selected
+    show_moving_average = st.checkbox('Show 7-day moving average')
+    if show_moving_average:
+        data['7_day_avg'] = data['kg'].rolling(window=7).mean()
+        filtered_average_data = filter_dates(data, period)
+        fig.add_trace(go.Scatter(x=filtered_average_data['date'], y=filtered_average_data['7_day_avg'], 
+                                    mode='lines', 
+                                    name='7-day moving average',
+                                    line=dict(color='red')))
+    
+    # Set y-axis range
+    ymin, ymax = st.slider('Set y-axis range', min_value=0, max_value=100, value=(70,76))
+    fig.update_yaxes(range=[ymin, ymax])
+    # fig.update_yaxes(autorange=True)
+
+    # Update layout
+    fig.update_layout(
+        font=dict(
+            family="Arial, Meiryo, monospace",
+            size=18,
+            color="black"
+        ),
+        plot_bgcolor='white',
+        xaxis_showgrid=True, 
+        yaxis_showgrid=True, 
+        xaxis=dict(range=[filtered_data['date'].min(), filtered_data.dropna(subset=['kg'])['date'].max()]),  # x軸の範囲を設定
+        xaxis_ticks="inside", 
+        yaxis_ticks="inside",
+        xaxis_linecolor='black',
+        yaxis_linecolor='black',
+        xaxis_title="Date",
+        yaxis_title="Weight (kg)"
+    )
+    
+    st.plotly_chart(fig)
 
 if __name__ == '__main__':
     app()
